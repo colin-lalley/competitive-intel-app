@@ -92,6 +92,17 @@ competitors = load_jsonl("competitors.jsonl")
 activity_log = load_jsonl("competitor-activity-log.jsonl")
 competitor_map = {c["id"]: c["name"] for c in competitors}
 
+# ── Vouch's own verticals and coverage lines (for overlap color coding) ──
+VOUCH_VERTICALS = {"tech", "professional_services", "health_life_sciences", "financial_services"}
+VOUCH_SUB_VERTICALS = {
+    "ai", "saas", "fintech", "ecommerce", "hardware", "crypto",
+    "accounting", "architecture_engineering_construction", "it_consulting",
+    "management_consulting", "marketing_creative_agencies",
+    "healthtech", "biotools_testing",
+    "hedge_funds", "asset_management", "venture_capital",
+}
+VOUCH_COVERAGE = {"d_and_o", "e_and_o", "cyber", "crime", "property", "gl", "media", "wc", "epli"}
+
 # ── Custom CSS ──
 st.markdown(
     """
@@ -156,15 +167,36 @@ st.markdown(
         color: #333;
     }
 
-    /* Content handling */
-    .content-box {
-        background: #eff6ff;
-        border: 1px solid #bfdbfe;
-        border-radius: 8px;
-        padding: 14px;
-        font-size: 14px;
-        line-height: 1.6;
-        color: #1e40af;
+    /* Overlap tags */
+    .tag-overlap {
+        display: inline-block;
+        padding: 3px 10px;
+        background: #dcfce7;
+        border: 1px solid #bbf7d0;
+        border-radius: 4px;
+        font-size: 12px;
+        color: #166534;
+        margin: 2px;
+    }
+    .tag-theirs-only {
+        display: inline-block;
+        padding: 3px 10px;
+        background: #fee2e2;
+        border: 1px solid #fecaca;
+        border-radius: 4px;
+        font-size: 12px;
+        color: #991b1b;
+        margin: 2px;
+    }
+    .tag-ours-only {
+        display: inline-block;
+        padding: 3px 10px;
+        background: #f0f0f0;
+        border: 1px solid #e0e0e0;
+        border-radius: 4px;
+        font-size: 12px;
+        color: #888;
+        margin: 2px;
     }
 
     /* Gap item */
@@ -341,21 +373,33 @@ with tab_battlecards:
                     unsafe_allow_html=True,
                 )
 
-            # Verticals
-            st.markdown('<div class="section-header">Verticals</div>', unsafe_allow_html=True)
-            tags = " ".join(
-                f'<span class="tag">{format_label(v)}</span>'
-                for v in comp.get("sub_verticals", [])
+            # Verticals (color coded: green = overlap, red = theirs only, gray = ours only)
+            st.markdown(
+                '<div class="section-header">Verticals</div>',
+                unsafe_allow_html=True,
             )
-            st.markdown(tags, unsafe_allow_html=True)
+            comp_subs = set(comp.get("sub_verticals", []))
+            vert_tags = ""
+            for v in comp.get("sub_verticals", []):
+                css = "tag-overlap" if v in VOUCH_SUB_VERTICALS else "tag-theirs-only"
+                vert_tags += f'<span class="{css}">{format_label(v)}</span> '
+            for v in sorted(VOUCH_SUB_VERTICALS - comp_subs):
+                vert_tags += f'<span class="tag-ours-only">{format_label(v)}</span> '
+            st.markdown(vert_tags, unsafe_allow_html=True)
 
-            # Coverage lines
-            st.markdown('<div class="section-header">Coverage Lines</div>', unsafe_allow_html=True)
-            tags = " ".join(
-                f'<span class="tag">{format_label(l)}</span>'
-                for l in comp.get("coverage_lines", [])
+            # Coverage lines (color coded: green = overlap, red = theirs only, gray = ours only)
+            st.markdown(
+                '<div class="section-header">Coverage Lines</div>',
+                unsafe_allow_html=True,
             )
-            st.markdown(tags, unsafe_allow_html=True)
+            comp_lines = set(comp.get("coverage_lines", []))
+            line_tags = ""
+            for l in comp.get("coverage_lines", []):
+                css = "tag-overlap" if l in VOUCH_COVERAGE else "tag-theirs-only"
+                line_tags += f'<span class="{css}">{format_label(l)}</span> '
+            for l in sorted(VOUCH_COVERAGE - comp_lines):
+                line_tags += f'<span class="tag-ours-only">{format_label(l)}</span> '
+            st.markdown(line_tags, unsafe_allow_html=True)
 
             # Key differentiators
             st.markdown('<div class="section-header">Key Differentiators</div>', unsafe_allow_html=True)
@@ -404,16 +448,6 @@ with tab_battlecards:
                     f'<div class="objection-card">{obj}</div>',
                     unsafe_allow_html=True,
                 )
-
-            # Content handling
-            st.markdown(
-                '<div class="section-header">Content Handling</div>',
-                unsafe_allow_html=True,
-            )
-            st.markdown(
-                f'<div class="content-box">{comp.get("content_handling", "")}</div>',
-                unsafe_allow_html=True,
-            )
 
             # Pricing
             if comp.get("pricing_model"):
